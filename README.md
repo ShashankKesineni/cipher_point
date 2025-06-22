@@ -4,25 +4,25 @@ A secure, end-to-end encrypted messaging and location-based security app built w
 
 ## Features
 
-### 🔒 **Encryption & Security**
+### **Encryption & Security**
 - **Message Encryption**: Encrypt messages with custom passwords
 - **Message Decryption**: Decrypt messages using message ID and password
 - **End-to-End Encryption**: All messages are encrypted client-side
 - **Location-Based Security**: Messages can be locked to specific GPS coordinates
 
-### 💬 **Messaging System**
+### **Messaging System**
 - **Friend Management**: Add and manage friends
 - **User Search**: Search for users by name or email
 - **Secure Conversations**: Encrypted messaging between friends
 - **Location Requirements**: Messages can require being at a specific location to decrypt
 
-### 📍 **Location Features**
+### **Location Features**
 - **GPS Integration**: Set and verify message locations
 - **Address Search**: Search for locations using OpenStreetMap API
 - **Distance Verification**: Messages unlock only when within 50 meters
 - **Directions**: Get directions to message locations
 
-### 🎨 **Modern UI/UX**
+### **Modern UI/UX**
 - **Clean Design**: Modern, intuitive interface
 - **Responsive Layout**: Works on both iOS and Android
 - **Accessibility**: Optimized for easy navigation

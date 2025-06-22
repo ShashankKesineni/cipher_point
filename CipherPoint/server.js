@@ -13,13 +13,11 @@ const JWT_SECRET = 'your-secret-key-change-in-production';
 app.use(cors());
 app.use(bodyParser.json());
 
-// In-memory storage for messages and users
 const messages = {};
 const users = {};
-const friends = {}; // userId -> [friendIds]
-const conversations = {}; // conversationId -> [messages]
+const friends = {}; 
+const conversations = {}; 
 
-// Middleware to verify JWT token
 const authenticateToken = (req, res, next) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
@@ -37,12 +35,10 @@ const authenticateToken = (req, res, next) => {
   });
 };
 
-// Health check endpoint
 app.get('/health', (req, res) => {
   res.json({ status: 'OK', message: 'CipherPoint API is running' });
 });
 
-// User signup
 app.post('/signup', async (req, res) => {
   const { name, email, password } = req.body;
   
@@ -50,16 +46,13 @@ app.post('/signup', async (req, res) => {
     return res.status(400).json({ error: 'Name, email, and password are required' });
   }
 
-  // Check if user already exists
   if (users[email]) {
     return res.status(409).json({ error: 'User already exists' });
   }
 
   try {
-    // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
     
-    // Create user
     const user = {
       id: uuidv4(),
       name,
@@ -70,7 +63,6 @@ app.post('/signup', async (req, res) => {
     
     users[email] = user;
     
-    // Generate JWT token
     const token = jwt.sign({ userId: user.id, email: user.email }, JWT_SECRET, { expiresIn: '24h' });
     
     res.status(201).json({
@@ -87,7 +79,6 @@ app.post('/signup', async (req, res) => {
   }
 });
 
-// User login
 app.post('/login', async (req, res) => {
   const { email, password } = req.body;
   
@@ -101,13 +92,11 @@ app.post('/login', async (req, res) => {
   }
 
   try {
-    // Check password
     const isValidPassword = await bcrypt.compare(password, user.password);
     if (!isValidPassword) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
     
-    // Generate JWT token
     const token = jwt.sign({ userId: user.id, email: user.email }, JWT_SECRET, { expiresIn: '24h' });
     
     res.json({
@@ -124,7 +113,6 @@ app.post('/login', async (req, res) => {
   }
 });
 
-// Google OAuth login (simplified - you'd need to implement proper Google OAuth)
 app.post('/google-login', (req, res) => {
   const { googleToken, userInfo } = req.body;
   
@@ -132,7 +120,6 @@ app.post('/google-login', (req, res) => {
     return res.status(400).json({ error: 'Google user info required' });
   }
 
-  // Check if user exists, if not create them
   let user = users[userInfo.email];
   if (!user) {
     user = {
@@ -145,7 +132,6 @@ app.post('/google-login', (req, res) => {
     users[userInfo.email] = user;
   }
   
-  // Generate JWT token
   const token = jwt.sign({ userId: user.id, email: user.email }, JWT_SECRET, { expiresIn: '24h' });
   
   res.json({
@@ -159,7 +145,6 @@ app.post('/google-login', (req, res) => {
   });
 });
 
-// Get user profile (protected route)
 app.get('/profile', authenticateToken, (req, res) => {
   const user = users[req.user.email];
   if (!user) {
@@ -175,7 +160,6 @@ app.get('/profile', authenticateToken, (req, res) => {
   });
 });
 
-// Encrypt and store message (protected route)
 app.post('/encrypt', authenticateToken, (req, res) => {
   const { message, password } = req.body;
   if (!message || !password) {
@@ -191,7 +175,6 @@ app.post('/encrypt', authenticateToken, (req, res) => {
   res.json({ id });
 });
 
-// Decrypt message by ID and password (protected route)
 app.post('/decrypt', authenticateToken, (req, res) => {
   const { id, password } = req.body;
   if (!id || !password) {
@@ -211,9 +194,6 @@ app.post('/decrypt', authenticateToken, (req, res) => {
   }
 });
 
-// Friends management endpoints
-
-// Get user's friends list
 app.get('/friends', authenticateToken, (req, res) => {
   const userFriends = friends[req.user.userId] || [];
   const friendsList = userFriends.map(friendId => {
@@ -228,7 +208,6 @@ app.get('/friends', authenticateToken, (req, res) => {
   res.json({ friends: friendsList });
 });
 
-// Search users by name or email
 app.get('/users', authenticateToken, (req, res) => {
   const { search } = req.query;
   if (!search) {
@@ -238,7 +217,7 @@ app.get('/users', authenticateToken, (req, res) => {
   const searchLower = search.toLowerCase();
   const searchResults = Object.values(users)
     .filter(user => 
-      user.id !== req.user.userId && // Exclude current user
+      user.id !== req.user.userId && 
       (user.name.toLowerCase().includes(searchLower) || 
        user.email.toLowerCase().includes(searchLower))
     )
@@ -251,32 +230,27 @@ app.get('/users', authenticateToken, (req, res) => {
   res.json({ users: searchResults });
 });
 
-// Add friend
 app.post('/friends/add', authenticateToken, (req, res) => {
   const { friendId } = req.body;
   if (!friendId) {
     return res.status(400).json({ error: 'Friend ID required' });
   }
   
-  // Check if friend exists
   const friend = Object.values(users).find(u => u.id === friendId);
   if (!friend) {
     return res.status(404).json({ error: 'User not found' });
   }
   
-  // Check if already friends
   const userFriends = friends[req.user.userId] || [];
   if (userFriends.includes(friendId)) {
     return res.status(409).json({ error: 'Already friends' });
   }
   
-  // Add friend
   if (!friends[req.user.userId]) {
     friends[req.user.userId] = [];
   }
   friends[req.user.userId].push(friendId);
   
-  // Add reverse friendship
   if (!friends[friendId]) {
     friends[friendId] = [];
   }
@@ -285,16 +259,13 @@ app.post('/friends/add', authenticateToken, (req, res) => {
   res.json({ message: 'Friend added successfully' });
 });
 
-// Remove friend
 app.delete('/friends/remove/:friendId', authenticateToken, (req, res) => {
   const { friendId } = req.params;
   
-  // Remove from current user's friends
   if (friends[req.user.userId]) {
     friends[req.user.userId] = friends[req.user.userId].filter(id => id !== friendId);
   }
   
-  // Remove from friend's friends
   if (friends[friendId]) {
     friends[friendId] = friends[friendId].filter(id => id !== req.user.userId);
   }
@@ -302,39 +273,30 @@ app.delete('/friends/remove/:friendId', authenticateToken, (req, res) => {
   res.json({ message: 'Friend removed successfully' });
 });
 
-// Messaging endpoints
-
-// Send message
 app.post('/messages/send', authenticateToken, (req, res) => {
   const { recipientId, message, password } = req.body;
   if (!recipientId || !message || !password) {
     return res.status(400).json({ error: 'Recipient ID, message, and password required' });
   }
   
-  // Check if recipient exists
   const recipient = Object.values(users).find(u => u.id === recipientId);
   if (!recipient) {
     return res.status(404).json({ error: 'Recipient not found' });
   }
   
-  // Check if they are friends
   const userFriends = friends[req.user.userId] || [];
   if (!userFriends.includes(recipientId)) {
     return res.status(403).json({ error: 'Can only send messages to friends' });
   }
   
-  // Encrypt message
   const encrypted = CryptoJS.AES.encrypt(message, password).toString();
   
-  // Create conversation ID (sorted to ensure consistency)
   const conversationId = [req.user.userId, recipientId].sort().join('-');
   
-  // Initialize conversation if it doesn't exist
   if (!conversations[conversationId]) {
     conversations[conversationId] = [];
   }
   
-  // Add message to conversation
   const messageData = {
     id: uuidv4(),
     senderId: req.user.userId,
@@ -348,39 +310,33 @@ app.post('/messages/send', authenticateToken, (req, res) => {
   res.json({ message: 'Message sent successfully', messageId: messageData.id });
 });
 
-// Get conversation messages
 app.get('/messages/conversation/:friendId', authenticateToken, (req, res) => {
   const { friendId } = req.params;
   
-  // Check if they are friends
   const userFriends = friends[req.user.userId] || [];
   if (!userFriends.includes(friendId)) {
     return res.status(403).json({ error: 'Can only view conversations with friends' });
   }
   
-  // Get conversation
   const conversationId = [req.user.userId, friendId].sort().join('-');
   const conversation = conversations[conversationId] || [];
   
-  // Format messages for frontend
   const formattedMessages = conversation.map(msg => ({
     id: msg.id,
     isFromMe: msg.senderId === req.user.userId,
     timestamp: msg.timestamp,
-    location: msg.location || null // Include location data if it exists
+    location: msg.location || null
   }));
   
   res.json({ messages: formattedMessages });
 });
 
-// Decrypt message
 app.post('/messages/decrypt', authenticateToken, (req, res) => {
   const { messageId, password } = req.body;
   if (!messageId || !password) {
     return res.status(400).json({ error: 'Message ID and password required' });
   }
   
-  // Find message in conversations
   let messageData = null;
   for (const conversationId in conversations) {
     const message = conversations[conversationId].find(m => m.id === messageId);
@@ -394,7 +350,6 @@ app.post('/messages/decrypt', authenticateToken, (req, res) => {
     return res.status(404).json({ error: 'Message not found' });
   }
   
-  // Check if user is part of the conversation
   const conversationId = [messageData.senderId, messageData.recipientId].sort().join('-');
   const userFriends = friends[req.user.userId] || [];
   const isParticipant = messageData.senderId === req.user.userId || messageData.recipientId === req.user.userId;
@@ -414,51 +369,41 @@ app.post('/messages/decrypt', authenticateToken, (req, res) => {
   }
 });
 
-// Location-based messaging endpoints
-
-// Send location-based message
 app.post('/messages/send-location', authenticateToken, (req, res) => {
   const { recipientId, message, password, location } = req.body;
   if (!recipientId || !message || !password || !location) {
     return res.status(400).json({ error: 'Recipient ID, message, password, and location are required' });
   }
   
-  // Check if recipient exists
   const recipient = Object.values(users).find(u => u.id === recipientId);
   if (!recipient) {
     return res.status(404).json({ error: 'Recipient not found' });
   }
   
-  // Check if they are friends
   const userFriends = friends[req.user.userId] || [];
   if (!userFriends.includes(recipientId)) {
     return res.status(403).json({ error: 'Can only send messages to friends' });
   }
   
-  // Validate location data
   if (!location.latitude || !location.longitude || !location.name) {
     return res.status(400).json({ error: 'Invalid location data' });
   }
   
-  // Encrypt message
   const encrypted = CryptoJS.AES.encrypt(message, password).toString();
   
-  // Create conversation ID (sorted to ensure consistency)
   const conversationId = [req.user.userId, recipientId].sort().join('-');
   
-  // Initialize conversation if it doesn't exist
   if (!conversations[conversationId]) {
     conversations[conversationId] = [];
   }
   
-  // Add message to conversation with location data
   const messageData = {
     id: uuidv4(),
     senderId: req.user.userId,
     recipientId: recipientId,
     encrypted: encrypted,
     location: location,
-    password: password, // Store password for location verification
+    password: password,
     timestamp: new Date().toISOString()
   };
   
@@ -471,14 +416,12 @@ app.post('/messages/send-location', authenticateToken, (req, res) => {
   });
 });
 
-// Get message password when at location
 app.post('/messages/get-password', authenticateToken, (req, res) => {
   const { messageId, latitude, longitude } = req.body;
   if (!messageId || !latitude || !longitude) {
     return res.status(400).json({ error: 'Message ID and current location required' });
   }
   
-  // Find message in conversations
   let messageData = null;
   for (const conversationId in conversations) {
     const message = conversations[conversationId].find(m => m.id === messageId);
@@ -492,12 +435,10 @@ app.post('/messages/get-password', authenticateToken, (req, res) => {
     return res.status(404).json({ error: 'Message not found' });
   }
   
-  // Check if user is the intended recipient
   if (messageData.recipientId !== req.user.userId) {
     return res.status(403).json({ error: 'Access denied' });
   }
   
-  // Check if user is close enough to the location (within 50 meters)
   const distance = calculateDistance(
     latitude, 
     longitude, 
@@ -519,14 +460,12 @@ app.post('/messages/get-password', authenticateToken, (req, res) => {
   });
 });
 
-// Decrypt location-based message
 app.post('/messages/decrypt-location', authenticateToken, (req, res) => {
   const { messageId, password } = req.body;
   if (!messageId || !password) {
     return res.status(400).json({ error: 'Message ID and password required' });
   }
   
-  // Find message in conversations
   let messageData = null;
   let conversationId = null;
   for (const convId in conversations) {
@@ -542,12 +481,10 @@ app.post('/messages/decrypt-location', authenticateToken, (req, res) => {
     return res.status(404).json({ error: 'Message not found' });
   }
   
-  // Check if user is the intended recipient
   if (messageData.recipientId !== req.user.userId) {
     return res.status(403).json({ error: 'Access denied' });
   }
   
-  // Verify password
   if (messageData.password !== password) {
     return res.status(401).json({ error: 'Invalid password' });
   }
@@ -556,8 +493,7 @@ app.post('/messages/decrypt-location', authenticateToken, (req, res) => {
     const bytes = CryptoJS.AES.decrypt(messageData.encrypted, password);
     const decrypted = bytes.toString(CryptoJS.enc.Utf8);
     if (!decrypted) throw new Error('Decryption failed');
-    
-    // Remove message after successful decryption
+
     if (conversationId) {
       conversations[conversationId] = conversations[conversationId].filter(m => m.id !== messageId);
     }
@@ -572,9 +508,8 @@ app.post('/messages/decrypt-location', authenticateToken, (req, res) => {
   }
 });
 
-// Helper function to calculate distance between two points (Haversine formula)
 function calculateDistance(lat1, lon1, lat2, lon2) {
-  const R = 6371e3; // Earth's radius in meters
+  const R = 6371e3;
   const φ1 = lat1 * Math.PI / 180;
   const φ2 = lat2 * Math.PI / 180;
   const Δφ = (lat2 - lat1) * Math.PI / 180;
@@ -585,7 +520,7 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
     Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 
-  return R * c; // Distance in meters
+  return R * c;
 }
 
 app.listen(port, () => {

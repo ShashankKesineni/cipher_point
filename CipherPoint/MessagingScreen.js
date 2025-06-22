@@ -9,16 +9,20 @@ import {
   Alert,
   FlatList,
   Modal,
-  Dimensions
+  Dimensions,
+  ActivityIndicator,
+  Linking,
+  Platform
 } from 'react-native';
 import * as Location from 'expo-location';
+import * as Clipboard from 'expo-clipboard';
 import MapView, { Marker, Circle } from 'react-native-maps';
 
 const API_URL = 'https://cipherpoint-production.up.railway.app';
 const { width, height } = Dimensions.get('window');
 
 const MessagingScreen = ({ authToken, user, onNavigate }) => {
-  const [activeTab, setActiveTab] = useState('friends'); // 'friends', 'search', 'conversations'
+  const [activeTab, setActiveTab] = useState('friends');
   const [friends, setFriends] = useState([]);
   const [searchResults, setSearchResults] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -38,8 +42,17 @@ const MessagingScreen = ({ authToken, user, onNavigate }) => {
   const [locationName, setLocationName] = useState('');
   const [currentLocation, setCurrentLocation] = useState(null);
   const messagesListRef = useRef(null);
+  const [addressQuery, setAddressQuery] = useState('');
+  const [addressResults, setAddressResults] = useState([]);
+  const [isSearchingAddress, setIsSearchingAddress] = useState(false);
 
-  // Load friends on component mount
+  // Info texts for each tab
+  const tabInfo = {
+    friends: 'View and manage your friends. Start a secure conversation with anyone you trust.',
+    search: 'Search for users by name or email. Add them as friends to start messaging securely.',
+    conversations: 'View your encrypted conversations. Messages may require a password or location to decrypt.'
+  };
+
   useEffect(() => {
     if (authToken) {
       loadFriends();
@@ -178,10 +191,8 @@ const MessagingScreen = ({ authToken, user, onNavigate }) => {
       if (response.ok) {
         setMessages(data.messages);
         setCurrentConversation(friendId);
-        // Clear inputs when switching conversations
         setNewMessage('');
         setMessagePassword('');
-        // Scroll to bottom after loading messages
         setTimeout(() => {
           if (messagesListRef.current) {
             messagesListRef.current.scrollToEnd({ animated: false });
@@ -295,6 +306,54 @@ const MessagingScreen = ({ authToken, user, onNavigate }) => {
     }
   };
 
+  // Copy location handler
+  const handleCopyLocation = async (location) => {
+    if (location) {
+      const coords = `${location.latitude},${location.longitude}`;
+      await Clipboard.setStringAsync(coords);
+      Alert.alert('Copied', 'Coordinates copied to clipboard!');
+    }
+  };
+
+  // Get directions handler
+  const handleGetDirections = async () => {
+    let coords = '';
+    try {
+      coords = await Clipboard.getStringAsync();
+    } catch {}
+    Alert.prompt(
+      'Paste Coordinates',
+      'Paste latitude,longitude to get directions to the location.',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Go',
+          onPress: async (input) => {
+            const value = (input || coords || '').trim();
+            const match = value.match(/^(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)$/);
+            if (!match) {
+              Alert.alert('Invalid', 'Please enter valid coordinates in the format: latitude,longitude');
+              return;
+            }
+            const lat = parseFloat(match[1]);
+            const lng = parseFloat(match[2]);
+            const url = Platform.select({
+              ios: `http://maps.apple.com/?daddr=${lat},${lng}`,
+              android: `geo:0,0?q=${lat},${lng}`,
+              default: `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`
+            });
+            Linking.openURL(url);
+          },
+        },
+      ],
+      'plain-text',
+      coords
+    );
+  };
+
   const renderFriendItem = ({ item }) => (
     <View style={styles.friendItem}>
       <View style={styles.friendInfo}>
@@ -338,8 +397,11 @@ const MessagingScreen = ({ authToken, user, onNavigate }) => {
   );
 
   const renderMessage = ({ item }) => (
-    <View style={[styles.messageItem, item.isFromMe ? styles.myMessage : styles.theirMessage]}>
-      <View style={styles.messageHeader}>
+    <View style={[
+      styles.messageBubble,
+      item.isFromMe ? styles.myMessageBubble : styles.theirMessageBubble
+    ]}>
+      <View style={styles.messageMetaRow}>
         <Text style={styles.messageSender}>
           {item.isFromMe ? 'You' : selectedFriend?.name || 'Friend'}
         </Text>
@@ -347,39 +409,37 @@ const MessagingScreen = ({ authToken, user, onNavigate }) => {
           {new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
         </Text>
       </View>
-      
-      {/* Always show location for location-based messages */}
       {item.location && (
-        <View style={styles.messageLocationBox}>
-          <Text style={styles.locationInfo}>
-            📍 {item.location.name} ({item.location.latitude.toFixed(4)}, {item.location.longitude.toFixed(4)})
-          </Text>
+        <View style={styles.messageLocationBoxClean}>
+          <TouchableOpacity onPress={() => handleCopyLocation(item.location)}>
+            <Text style={styles.locationInfoCopyable}>
+              📍 {item.location.name} ({item.location.latitude.toFixed(4)}, {item.location.longitude.toFixed(4)})
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.getDirectionsButton} onPress={handleGetDirections}>
+            <Text style={styles.getDirectionsButtonText}>Get Directions</Text>
+          </TouchableOpacity>
           {!item.isFromMe && !decryptedMessages[item.id] && (
-            <Text style={styles.locationInstruction}>
+            <Text style={styles.locationInstructionClean}>
               Go to this location to get the password and decrypt this message
             </Text>
           )}
         </View>
       )}
-      
       {decryptedMessages[item.id] ? (
-        <View style={styles.decryptedMessageContent}>
-          <Text style={[styles.messageText, item.isFromMe ? styles.myMessageText : styles.theirMessageText]}>
-            {decryptedMessages[item.id]}
-          </Text>
-          <View style={styles.messageStatus}>
-            <Text style={styles.statusText}>✓ Read</Text>
-          </View>
+        <View style={styles.decryptedMessageContentClean}>
+          <Text style={styles.messageTextClean}>{decryptedMessages[item.id]}</Text>
+          <Text style={styles.statusTextClean}>✓ Read</Text>
         </View>
       ) : (
-        <View style={styles.encryptedMessageContent}>
-          <View style={styles.encryptedHeader}>
-            <Text style={styles.encryptedIcon}>🔒</Text>
-            <Text style={styles.encryptedText}>Encrypted Message</Text>
+        <View style={styles.encryptedMessageContentClean}>
+          <View style={styles.encryptedHeaderClean}>
+            <Text style={styles.encryptedIconClean}>🔒</Text>
+            <Text style={styles.encryptedTextClean}>Encrypted Message</Text>
           </View>
-          <View style={styles.decryptContainer}>
+          <View style={styles.decryptContainerClean}>
             <TextInput
-              style={styles.decryptPasswordInput}
+              style={styles.decryptPasswordInputClean}
               placeholder="Enter password to decrypt"
               value={passwordInputs[item.id] || ''}
               secureTextEntry
@@ -394,20 +454,20 @@ const MessagingScreen = ({ authToken, user, onNavigate }) => {
               returnKeyType="done"
             />
             <TouchableOpacity 
-              style={[styles.decryptButton, !passwordInputs[item.id]?.trim() && styles.decryptButtonDisabled]}
+              style={[styles.decryptButtonClean, !passwordInputs[item.id]?.trim() && styles.decryptButtonDisabledClean]}
               onPress={() => decryptLocationMessage(item.id, passwordInputs[item.id])}
               disabled={!passwordInputs[item.id]?.trim() || decryptingMessages[item.id]}
             >
-              <Text style={[styles.decryptButtonText, !passwordInputs[item.id]?.trim() && styles.decryptButtonTextDisabled]}>
+              <Text style={[styles.decryptButtonTextClean, !passwordInputs[item.id]?.trim() && styles.decryptButtonTextDisabledClean]}>
                 {decryptingMessages[item.id] ? 'Decrypting...' : 'Decrypt'}
               </Text>
             </TouchableOpacity>
             {!item.isFromMe && (
               <TouchableOpacity 
-                style={styles.decryptButton}
+                style={styles.decryptButtonClean}
                 onPress={() => getMessagePassword(item.id)}
               >
-                <Text style={styles.decryptButtonText}>Get Password</Text>
+                <Text style={styles.decryptButtonTextClean}>Get Password</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -421,6 +481,7 @@ const MessagingScreen = ({ authToken, user, onNavigate }) => {
       case 'friends':
         return (
           <View style={styles.tabContent}>
+            <Text style={styles.tabInfo}>{tabInfo.friends}</Text>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Your Friends ({friends.length})</Text>
               <TouchableOpacity 
@@ -449,6 +510,7 @@ const MessagingScreen = ({ authToken, user, onNavigate }) => {
       case 'search':
         return (
           <View style={styles.tabContent}>
+            <Text style={styles.tabInfo}>{tabInfo.search}</Text>
             <View style={styles.searchSection}>
               <TextInput
                 style={styles.searchInput}
@@ -473,9 +535,10 @@ const MessagingScreen = ({ authToken, user, onNavigate }) => {
       case 'conversations':
         return (
           <View style={styles.tabContent}>
+            <Text style={styles.tabInfo}>{tabInfo.conversations}</Text>
             {currentConversation ? (
-              <View style={styles.conversationView}>
-                <View style={styles.conversationHeader}>
+              <View style={styles.conversationViewClean}>
+                <View style={styles.conversationHeaderClean}>
                   <TouchableOpacity 
                     style={styles.backButtonContainer}
                     onPress={() => setActiveTab('friends')}
@@ -483,16 +546,11 @@ const MessagingScreen = ({ authToken, user, onNavigate }) => {
                     <Text style={styles.backButtonText}>←</Text>
                   </TouchableOpacity>
                   <View style={styles.conversationInfo}>
-                    <Text style={styles.conversationTitle}>
-                      {selectedFriend?.name}
-                    </Text>
-                    <Text style={styles.conversationSubtitle}>
-                      {selectedFriend?.email}
-                    </Text>
+                    <Text style={styles.conversationTitle}>{selectedFriend?.name}</Text>
+                    <Text style={styles.conversationSubtitle}>{selectedFriend?.email}</Text>
                   </View>
                 </View>
-                
-                <View style={styles.messagesContainer}>
+                <View style={styles.messagesContainerClean}>
                   {messages.length === 0 ? (
                     <View style={styles.emptyConversation}>
                       <Text style={styles.emptyConversationIcon}>💬</Text>
@@ -518,68 +576,72 @@ const MessagingScreen = ({ authToken, user, onNavigate }) => {
                       maxToRenderPerBatch={10}
                       windowSize={10}
                       getItemLayout={(data, index) => ({
-                        length: 80, // Approximate height of each message
+                        length: 80,
                         offset: 80 * index,
                         index,
                       })}
                     />
                   )}
                 </View>
-                
-                <View style={styles.messageInputCardClean}>
-                  <Text style={styles.inputLabelClean}>Message</Text>
-                  <TextInput
-                    style={styles.messageInputClean}
-                    placeholder="Type your message..."
-                    value={newMessage}
-                    onChangeText={setNewMessage}
-                    multiline
-                    maxLength={1000}
-                    autoComplete="off"
-                    autoCorrect={false}
-                    accessibilityLabel="Message text input"
-                    placeholderTextColor="#95a5a6"
-                    key={`message-input-${currentConversation}`}
-                  />
-                  <View style={styles.divider} />
-                  <Text style={styles.inputLabelClean}>Password</Text>
-                  <TextInput
-                    style={styles.messagePasswordInputClean}
-                    placeholder="Message password (required)"
-                    value={messagePassword}
-                    onChangeText={setMessagePassword}
-                    secureTextEntry
-                    autoComplete="off"
-                    autoCorrect={false}
-                    autoCapitalize="none"
-                    textContentType="none"
-                    accessibilityLabel="Message encryption password"
-                    placeholderTextColor="#95a5a6"
-                    key={`password-input-${currentConversation}`}
-                  />
-                  <View style={styles.divider} />
-                  <View style={styles.locationSection}>
+                <View style={styles.messageInputCardCleanOuter}>
+                  <View style={styles.messageInputCardClean}>
+                    <Text style={styles.inputLabelClean}>Message</Text>
+                    <Text style={styles.inputHint}>Type your message. Only your friend and you can decrypt it.</Text>
+                    <TextInput
+                      style={styles.messageInputClean}
+                      placeholder="Type your message..."
+                      value={newMessage}
+                      onChangeText={setNewMessage}
+                      multiline
+                      maxLength={1000}
+                      autoComplete="off"
+                      autoCorrect={false}
+                      accessibilityLabel="Message text input"
+                      placeholderTextColor="#95a5a6"
+                      key={`message-input-${currentConversation}`}
+                    />
+                    <View style={styles.divider} />
+                    <Text style={styles.inputLabelClean}>Password</Text>
+                    <Text style={styles.inputHint}>Set a password for this message. Share it privately with your friend.</Text>
+                    <TextInput
+                      style={styles.messagePasswordInputClean}
+                      placeholder="Message password (required)"
+                      value={messagePassword}
+                      onChangeText={setMessagePassword}
+                      secureTextEntry
+                      autoComplete="off"
+                      autoCorrect={false}
+                      autoCapitalize="none"
+                      textContentType="none"
+                      accessibilityLabel="Message encryption password"
+                      placeholderTextColor="#95a5a6"
+                      key={`password-input-${currentConversation}`}
+                    />
+                    <View style={styles.divider} />
                     <Text style={styles.inputLabelClean}>Location</Text>
-                    <TouchableOpacity style={styles.locationButtonClean} onPress={() => setShowMap(true)}>
-                      <Text style={styles.locationButtonTextClean}>{location ? 'Change Location' : 'Set Location'}</Text>
+                    <Text style={styles.inputHint}>Set the required location for this message. Your friend must be at this location to decrypt.</Text>
+                    <View style={styles.locationButtonRowClean}>
+                      <TouchableOpacity style={styles.locationButtonClean} onPress={() => setShowMap(true)}>
+                        <Text style={styles.locationButtonTextClean}>{location ? 'Change Location' : 'Set Location'}</Text>
+                      </TouchableOpacity>
+                    </View>
+                    {location && (
+                      <View style={styles.selectedLocationDisplayClean}>
+                        <Text style={styles.selectedLocationTextClean}>
+                          📍 {locationName || 'Selected Location'} ({location.latitude.toFixed(4)}, {location.longitude.toFixed(4)})
+                        </Text>
+                      </View>
+                    )}
+                    <TouchableOpacity 
+                      style={[styles.sendButtonClean, (!newMessage.trim() || !messagePassword.trim() || !location) && styles.sendButtonDisabledClean]}
+                      onPress={sendMessage}
+                      disabled={!newMessage.trim() || !messagePassword.trim() || !location}
+                    >
+                      <Text style={[styles.sendButtonTextClean, (!newMessage.trim() || !messagePassword.trim() || !location) && styles.sendButtonTextDisabledClean]}>
+                        Send
+                      </Text>
                     </TouchableOpacity>
                   </View>
-                  {location && (
-                    <View style={styles.selectedLocationDisplayClean}>
-                      <Text style={styles.selectedLocationTextClean}>
-                        📍 {locationName || 'Selected Location'} ({location.latitude.toFixed(4)}, {location.longitude.toFixed(4)})
-                      </Text>
-                    </View>
-                  )}
-                  <TouchableOpacity 
-                    style={[styles.sendButtonClean, (!newMessage.trim() || !messagePassword.trim() || !location) && styles.sendButtonDisabledClean]}
-                    onPress={sendMessage}
-                    disabled={!newMessage.trim() || !messagePassword.trim() || !location}
-                  >
-                    <Text style={[styles.sendButtonTextClean, (!newMessage.trim() || !messagePassword.trim() || !location) && styles.sendButtonTextDisabledClean]}>
-                      Send
-                    </Text>
-                  </TouchableOpacity>
                 </View>
               </View>
             ) : (
@@ -599,43 +661,68 @@ const MessagingScreen = ({ authToken, user, onNavigate }) => {
     }
   };
 
-  return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => onNavigate('home')}>
-          <Text style={styles.backButton}>← Back to Home</Text>
-        </TouchableOpacity>
-        <Text style={styles.pageTitle}>Messaging</Text>
-      </View>
+  // Address search handler
+  const handleAddressSearch = async () => {
+    if (!addressQuery.trim()) {
+      setAddressResults([]);
+      return;
+    }
+    setIsSearchingAddress(true);
+    try {
+      const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(addressQuery.trim())}`);
+      const data = await response.json();
+      // Map to expected format: { latitude, longitude, display_name }
+      const results = data.map(item => ({
+        latitude: parseFloat(item.lat),
+        longitude: parseFloat(item.lon),
+        display_name: item.display_name
+      }));
+      setAddressResults(results);
+    } catch (e) {
+      setAddressResults([]);
+    }
+    setIsSearchingAddress(false);
+  };
 
-      <View style={styles.tabBar}>
+  return (
+    <View style={styles.messagingContainerClean}>
+      <View style={styles.messagingHeaderClean}>
+        <TouchableOpacity onPress={() => onNavigate('home')} style={styles.messagingBackBtnClean}>
+          <Text style={styles.messagingBackBtnTextClean}>← Home</Text>
+        </TouchableOpacity>
+        <View style={{ flex: 1, alignItems: 'center', position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, justifyContent: 'center', pointerEvents: 'none' }}>
+          <Text style={[styles.messagingPageTitleClean, { marginTop: 40 }]}>Messaging</Text>
+        </View>
+      </View>
+      <View style={styles.messagingTabBarClean}>
         <TouchableOpacity 
-          style={[styles.tab, activeTab === 'friends' && styles.activeTab]}
+          style={[styles.messagingTabClean, activeTab === 'friends' && styles.messagingActiveTabClean]}
           onPress={() => setActiveTab('friends')}
         >
-          <Text style={[styles.tabText, activeTab === 'friends' && styles.activeTabText]}>
+          <Text style={[styles.messagingTabTextClean, activeTab === 'friends' && styles.messagingActiveTabTextClean]}>
             Friends ({friends.length})
           </Text>
         </TouchableOpacity>
         <TouchableOpacity 
-          style={[styles.tab, activeTab === 'search' && styles.activeTab]}
+          style={[styles.messagingTabClean, activeTab === 'search' && styles.messagingActiveTabClean]}
           onPress={() => setActiveTab('search')}
         >
-          <Text style={[styles.tabText, activeTab === 'search' && styles.activeTabText]}>
+          <Text style={[styles.messagingTabTextClean, activeTab === 'search' && styles.messagingActiveTabTextClean]}>
             Search Users
           </Text>
         </TouchableOpacity>
         <TouchableOpacity 
-          style={[styles.tab, activeTab === 'conversations' && styles.activeTab]}
+          style={[styles.messagingTabClean, activeTab === 'conversations' && styles.messagingActiveTabClean]}
           onPress={() => setActiveTab('conversations')}
         >
-          <Text style={[styles.tabText, activeTab === 'conversations' && styles.activeTabText]}>
+          <Text style={[styles.messagingTabTextClean, activeTab === 'conversations' && styles.messagingActiveTabTextClean]}>
             Conversations
           </Text>
         </TouchableOpacity>
       </View>
-
-      {renderTabContent()}
+      <View style={styles.messagingTabContentCardClean}>
+        {renderTabContent()}
+      </View>
 
       <Modal visible={showMap} animationType="slide">
         <View style={styles.mapContainer}>
@@ -648,6 +735,12 @@ const MessagingScreen = ({ authToken, user, onNavigate }) => {
               longitudeDelta: 0.01,
             }}
             onPress={event => setSelectedLocation(event.nativeEvent.coordinate)}
+            region={selectedLocation ? {
+              latitude: selectedLocation.latitude,
+              longitude: selectedLocation.longitude,
+              latitudeDelta: 0.01,
+              longitudeDelta: 0.01,
+            } : undefined}
           >
             {currentLocation && (
               <Marker
@@ -672,6 +765,41 @@ const MessagingScreen = ({ authToken, user, onNavigate }) => {
               />
             )}
           </MapView>
+          {/* Address Search Bar and Results BELOW the map */}
+          <View style={styles.addressSearchBarContainer}>
+            <TextInput
+              style={styles.addressSearchInput}
+              placeholder="Search address..."
+              value={addressQuery}
+              onChangeText={setAddressQuery}
+              onSubmitEditing={handleAddressSearch}
+              returnKeyType="search"
+            />
+            <TouchableOpacity style={styles.addressSearchButton} onPress={handleAddressSearch}>
+              <Text style={styles.addressSearchButtonText}>Search</Text>
+            </TouchableOpacity>
+          </View>
+          {isSearchingAddress && (
+            <ActivityIndicator size="small" color="#3498db" style={{margin: 8}} />
+          )}
+          {addressResults.length > 0 && (
+            <View style={styles.addressResultsList}>
+              {addressResults.map((result, idx) => (
+                <TouchableOpacity
+                  key={idx}
+                  style={styles.addressResultItem}
+                  onPress={() => {
+                    setSelectedLocation({ latitude: result.latitude, longitude: result.longitude });
+                    setLocationName(result.display_name);
+                    setAddressQuery('');
+                    setAddressResults([]);
+                  }}
+                >
+                  <Text style={styles.addressResultText}>{result.display_name} ({result.latitude.toFixed(4)}, {result.longitude.toFixed(4)})</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
           <View style={styles.mapControls}>
             <TouchableOpacity style={styles.mapButton} onPress={() => setShowMap(false)}>
               <Text style={styles.mapButtonText}>Cancel</Text>
@@ -703,6 +831,86 @@ const MessagingScreen = ({ authToken, user, onNavigate }) => {
 };
 
 const styles = StyleSheet.create({
+  messagingContainerClean: {
+    flex: 1,
+    backgroundColor: 'transparent',
+    padding: 0,
+    borderRadius: 16,
+    minHeight: 400,
+  },
+  messagingHeaderClean: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 18,
+    paddingTop: 50,
+    paddingBottom: 8,
+    backgroundColor: 'transparent',
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    zIndex: 2,
+  },
+  messagingBackBtnClean: {
+    backgroundColor: 'rgba(52,152,219,0.07)',
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    marginRight: 8,
+  },
+  messagingBackBtnTextClean: {
+    color: '#3498db',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  messagingPageTitleClean: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#2c3e50',
+    textAlign: 'center',
+  },
+  messagingTabBarClean: {
+    flexDirection: 'row',
+    backgroundColor: '#f5fafd',
+    marginHorizontal: 18,
+    borderRadius: 12,
+    padding: 4,
+    marginBottom: 16,
+    marginTop: 2,
+    shadowColor: '#3498db',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  messagingTabClean: {
+    flex: 1,
+    paddingVertical: 12,
+    alignItems: 'center',
+    borderRadius: 8,
+    backgroundColor: 'transparent',
+  },
+  messagingActiveTabClean: {
+    backgroundColor: '#3498db',
+    shadowColor: '#3498db',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.10,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  messagingTabTextClean: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#7f8c8d',
+  },
+  messagingActiveTabTextClean: {
+    color: 'white',
+  },
+  messagingTabContentCardClean: {
+    flex: 1,
+    backgroundColor: 'transparent',
+    borderRadius: 16,
+    padding: 0,
+    minHeight: 300,
+  },
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
@@ -887,12 +1095,13 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
-  conversationView: {
+  conversationViewClean: {
     flex: 1,
     backgroundColor: '#f8f9fa',
+    padding: 0,
   },
-  conversationHeader: {
-    backgroundColor: 'white',
+  conversationHeaderClean: {
+    backgroundColor: '#fff',
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 20,
@@ -929,10 +1138,11 @@ const styles = StyleSheet.create({
     color: '#7f8c8d',
     marginTop: 2,
   },
-  messagesContainer: {
+  messagesContainerClean: {
     flex: 1,
     backgroundColor: '#f8f9fa',
     marginBottom: 0,
+    paddingBottom: 8,
   },
   messagesList: {
     flex: 1,
@@ -964,86 +1174,113 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 8,
   },
-  messageInputCardClean: {
-    backgroundColor: 'white',
-    borderRadius: 18,
-    margin: 16,
-    padding: 18,
+  messageInputCardCleanOuter: {
+    backgroundColor: '#f5fafd',
+    paddingVertical: 6,
+    paddingHorizontal: 0,
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 4,
+    shadowOffset: { width: 0, height: -1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  messageInputCardClean: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    marginHorizontal: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 1,
   },
   inputLabelClean: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#34495e',
-    marginBottom: 6,
+    marginBottom: 2,
+    marginTop: 8,
     fontWeight: '600',
+  },
+  inputHint: {
+    fontSize: 11,
+    color: '#7f8c8d',
+    marginBottom: 4,
+    marginTop: -2,
+    marginLeft: 2,
+    flexWrap: 'wrap',
   },
   messageInputClean: {
     borderWidth: 0,
-    borderRadius: 10,
+    borderRadius: 7,
     backgroundColor: '#f8f9fa',
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    fontSize: 16,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    fontSize: 14,
     color: '#2c3e50',
-    minHeight: 40,
-    maxHeight: 80,
+    minHeight: 32,
+    maxHeight: 60,
     marginBottom: 0,
+    marginTop: 2,
   },
   messagePasswordInputClean: {
     borderWidth: 0,
-    borderRadius: 10,
+    borderRadius: 7,
     backgroundColor: '#f8f9fa',
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    fontSize: 16,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    fontSize: 14,
     color: '#2c3e50',
-    minHeight: 40,
+    minHeight: 32,
     marginBottom: 0,
+    marginTop: 2,
   },
   divider: {
     height: 1,
     backgroundColor: '#ecf0f1',
-    marginVertical: 12,
+    marginVertical: 8,
   },
-  locationSection: {
+  locationButtonRowClean: {
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 0,
+    justifyContent: 'flex-start',
+    marginTop: 4,
+    marginBottom: 4,
   },
   locationButtonClean: {
     backgroundColor: '#3498db',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 7,
+    marginRight: 8,
   },
   locationButtonTextClean: {
     color: 'white',
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '600',
   },
   selectedLocationDisplayClean: {
     backgroundColor: '#eaf6fb',
     borderRadius: 8,
-    padding: 10,
-    marginTop: 8,
-    marginBottom: 8,
+    padding: 7,
+    marginTop: 4,
+    marginBottom: 4,
+    minWidth: 0,
   },
   selectedLocationTextClean: {
     color: '#2980b9',
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '500',
+    flexWrap: 'wrap',
   },
   sendButtonClean: {
     backgroundColor: '#27ae60',
     borderRadius: 10,
-    paddingVertical: 14,
+    paddingVertical: 10,
     alignItems: 'center',
-    marginTop: 8,
+    marginTop: 6,
     width: '100%',
   },
   sendButtonDisabledClean: {
@@ -1051,30 +1288,37 @@ const styles = StyleSheet.create({
   },
   sendButtonTextClean: {
     color: 'white',
-    fontSize: 17,
+    fontSize: 15,
     fontWeight: '700',
     letterSpacing: 0.5,
   },
   sendButtonTextDisabledClean: {
     color: '#95a5a6',
   },
-  messageItem: {
-    marginVertical: 4,
-    paddingHorizontal: 8,
-    maxWidth: '80%',
+  messageBubble: {
+    marginVertical: 8,
+    padding: 14,
+    borderRadius: 18,
+    maxWidth: '85%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 2,
+    backgroundColor: '#fff',
   },
-  myMessage: {
+  myMessageBubble: {
     alignSelf: 'flex-end',
+    backgroundColor: '#eaf6fb',
   },
-  theirMessage: {
+  theirMessageBubble: {
     alignSelf: 'flex-start',
+    backgroundColor: '#f5fafd',
   },
-  messageHeader: {
+  messageMetaRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 4,
-    paddingHorizontal: 4,
+    marginBottom: 2,
   },
   messageSender: {
     fontSize: 12,
@@ -1083,61 +1327,71 @@ const styles = StyleSheet.create({
   },
   messageTime: {
     fontSize: 11,
-    color: '#95a5a6',
+    color: '#b2bec3',
   },
-  decryptedMessageContent: {
+  messageLocationBoxClean: {
+    backgroundColor: '#f1f8e9',
+    borderRadius: 8,
+    padding: 8,
+    marginBottom: 6,
+    marginTop: 2,
+  },
+  locationInfoCopyable: {
+    color: '#2980b9',
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  locationInstructionClean: {
+    color: '#7f8c8d',
+    fontSize: 11,
+    fontWeight: '500',
+    marginTop: 2,
+  },
+  decryptedMessageContentClean: {
     backgroundColor: '#ecf0f1',
-    borderRadius: 16,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: '#d5dbdb',
-  },
-  myMessageText: {
-    color: '#2c3e50',
-    fontSize: 16,
-    lineHeight: 20,
-  },
-  theirMessageText: {
-    color: '#2c3e50',
-    fontSize: 16,
-    lineHeight: 20,
-  },
-  messageStatus: {
+    borderRadius: 14,
+    padding: 10,
     marginTop: 4,
-    alignItems: 'flex-end',
   },
-  statusText: {
+  messageTextClean: {
+    color: '#2c3e50',
+    fontSize: 15,
+    lineHeight: 20,
+  },
+  statusTextClean: {
     fontSize: 10,
     color: '#27ae60',
     fontWeight: '500',
+    marginTop: 2,
+    textAlign: 'right',
   },
-  encryptedMessageContent: {
+  encryptedMessageContentClean: {
     backgroundColor: '#f8f9fa',
-    borderRadius: 16,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: '#e9ecef',
+    borderRadius: 14,
+    padding: 10,
+    marginTop: 4,
   },
-  encryptedHeader: {
+  encryptedHeaderClean: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 6,
   },
-  encryptedIcon: {
+  encryptedIconClean: {
     fontSize: 16,
     marginRight: 6,
   },
-  encryptedText: {
-    fontSize: 14,
+  encryptedTextClean: {
+    fontSize: 13,
     color: '#6c757d',
     fontWeight: '500',
   },
-  decryptContainer: {
+  decryptContainerClean: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    marginTop: 4,
   },
-  decryptPasswordInput: {
+  decryptPasswordInputClean: {
     flex: 1,
     borderWidth: 1,
     borderColor: '#ddd',
@@ -1149,7 +1403,7 @@ const styles = StyleSheet.create({
     color: '#2c3e50',
     height: 32,
   },
-  decryptButton: {
+  decryptButtonClean: {
     backgroundColor: '#3498db',
     paddingHorizontal: 12,
     paddingVertical: 6,
@@ -1158,21 +1412,18 @@ const styles = StyleSheet.create({
     height: 32,
     alignItems: 'center',
     justifyContent: 'center',
+    marginLeft: 4,
   },
-  decryptButtonDisabled: {
+  decryptButtonDisabledClean: {
     backgroundColor: '#bdc3c7',
   },
-  decryptButtonText: {
+  decryptButtonTextClean: {
     color: 'white',
     fontSize: 12,
     fontWeight: '600',
   },
-  decryptButtonTextDisabled: {
+  decryptButtonTextDisabledClean: {
     color: '#7f8c8d',
-  },
-  messageText: {
-    fontSize: 16,
-    lineHeight: 22,
   },
   emptyState: {
     flex: 1,
@@ -1218,22 +1469,88 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
-  messageLocationBox: {
-    backgroundColor: '#ecf0f1',
+  tabInfo: {
+    fontSize: 15,
+    color: '#3498db',
+    marginBottom: 10,
+    textAlign: 'center',
+    fontWeight: '500',
+  },
+  copyLocationButton: {
+    backgroundColor: '#f5fafd',
+    borderWidth: 1,
+    borderColor: '#2980b9',
+    paddingVertical: 2,
+    paddingHorizontal: 10,
+    borderRadius: 6,
+    marginLeft: 8,
+  },
+  copyLocationButtonText: {
+    color: '#2980b9',
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.2,
+  },
+  addressSearchBarContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 10,
+    backgroundColor: '#f5fafd',
+    zIndex: 2,
+  },
+  addressSearchInput: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: '#ddd',
     borderRadius: 8,
     padding: 10,
-    marginBottom: 8,
+    fontSize: 15,
+    backgroundColor: 'white',
+    marginRight: 8,
   },
-  locationInfo: {
-    color: '#2c3e50',
+  addressSearchButton: {
+    backgroundColor: '#3498db',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  addressSearchButtonText: {
+    color: 'white',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  addressResultsList: {
+    backgroundColor: '#fff',
+    maxHeight: 120,
+    borderBottomLeftRadius: 8,
+    borderBottomRightRadius: 8,
+    marginHorizontal: 10,
+    marginBottom: 4,
+    zIndex: 3,
+    elevation: 2,
+  },
+  addressResultItem: {
+    padding: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  addressResultText: {
     fontSize: 14,
-    fontWeight: '500',
+    color: '#2c3e50',
   },
-  locationInstruction: {
-    color: '#7f8c8d',
-    fontSize: 12,
-    fontWeight: '500',
+  getDirectionsButton: {
+    backgroundColor: '#3498db',
+    borderRadius: 6,
+    paddingVertical: 4,
+    paddingHorizontal: 12,
+    alignSelf: 'flex-start',
     marginTop: 4,
+  },
+  getDirectionsButtonText: {
+    color: 'white',
+    fontSize: 13,
+    fontWeight: '700',
+    letterSpacing: 0.2,
   },
 });
 

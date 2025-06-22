@@ -23,7 +23,8 @@
       "infoPlist": {
         "NSCameraUsageDescription": "This app does not use the camera.",
         "NSLocationUsageDescription": "This app does not use location services.",
-        "NSMicrophoneUsageDescription": "This app does not use the microphone."
+        "NSMicrophoneUsageDescription": "This app does not use the microphone.",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
@@ -40,12 +41,19 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      
+      "expo-web-browser"
     ],
     "extra": {
       "eas": {
-        "projectId": "your-project-id-here"
+        "projectId": "c65fe039-19b8-40f0-b799-ef41ffaf1b10"
       }
+    },
+    "owner": "shashankkesineni",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/c65fe039-19b8-40f0-b799-ef41ffaf1b10"
     }
   }
 }

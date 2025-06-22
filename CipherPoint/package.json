@@ -11,11 +11,13 @@
   "dependencies": {
     "bcryptjs": "^3.0.2",
     "body-parser": "^2.2.0",
+    "canvas": "^3.1.1",
     "cors": "^2.8.5",
     "crypto-js": "^4.2.0",
     "expo": "~53.0.12",
     "expo-auth-session": "~6.2.0",
     "expo-crypto": "~14.1.5",
+    "expo-dev-client": "~5.2.1",
     "expo-location": "^18.1.5",
     "expo-status-bar": "~2.2.3",
     "expo-web-browser": "~14.2.0",
@@ -24,7 +26,12 @@
     "react": "19.0.0",
     "react-native": "0.79.4",
     "react-native-maps": "1.20.1",
-    "uuid": "^11.1.0"
+    "uuid": "^11.1.0",
+    "expo-updates": "~0.28.15",
+    "expo-clipboard": "~7.1.4",
+    "expo-linear-gradient": "~14.1.5",
+    "react-native-svg": "15.11.2",
+    "expo-apple-authentication": "~7.2.4"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0"

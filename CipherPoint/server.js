@@ -1,3 +1,4 @@
+//backend 
 const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
@@ -119,7 +120,6 @@ app.post('/google-login', (req, res) => {
   if (!userInfo || !userInfo.email) {
     return res.status(400).json({ error: 'Google user info required' });
   }
-
   let user = users[userInfo.email];
   if (!user) {
     user = {
@@ -131,7 +131,6 @@ app.post('/google-login', (req, res) => {
     };
     users[userInfo.email] = user;
   }
-  
   const token = jwt.sign({ userId: user.id, email: user.email }, JWT_SECRET, { expiresIn: '24h' });
   
   res.json({
@@ -174,7 +173,6 @@ app.post('/encrypt', authenticateToken, (req, res) => {
   };
   res.json({ id });
 });
-
 app.post('/decrypt', authenticateToken, (req, res) => {
   const { id, password } = req.body;
   if (!id || !password) {
@@ -229,7 +227,6 @@ app.get('/users', authenticateToken, (req, res) => {
   
   res.json({ users: searchResults });
 });
-
 app.post('/friends/add', authenticateToken, (req, res) => {
   const { friendId } = req.body;
   if (!friendId) {
@@ -369,6 +366,7 @@ app.post('/messages/decrypt', authenticateToken, (req, res) => {
   }
 });
 
+//bunch of checks to make sure user inpts proper info
 app.post('/messages/send-location', authenticateToken, (req, res) => {
   const { recipientId, message, password, location } = req.body;
   if (!recipientId || !message || !password || !location) {
@@ -438,7 +436,8 @@ app.post('/messages/get-password', authenticateToken, (req, res) => {
   if (messageData.recipientId !== req.user.userId) {
     return res.status(403).json({ error: 'Access denied' });
   }
-  
+
+  //mthd to get distance of required location
   const distance = calculateDistance(
     latitude, 
     longitude, 
@@ -476,7 +475,6 @@ app.post('/messages/decrypt-location', authenticateToken, (req, res) => {
       break;
     }
   }
-  
   if (!messageData) {
     return res.status(404).json({ error: 'Message not found' });
   }
@@ -508,18 +506,18 @@ app.post('/messages/decrypt-location', authenticateToken, (req, res) => {
   }
 });
 
+//math function that goes in the location mthd calculation
 function calculateDistance(lat1, lon1, lat2, lon2) {
   const R = 6371e3;
-  const φ1 = lat1 * Math.PI / 180;
-  const φ2 = lat2 * Math.PI / 180;
-  const Δφ = (lat2 - lat1) * Math.PI / 180;
-  const Δλ = (lon2 - lon1) * Math.PI / 180;
+  const o1 = lat1 * Math.PI / 180;
+  const o2 = lat2 * Math.PI / 180;
+  const Do = (lat2 - lat1) * Math.PI / 180;
+  const Ds = (lon2 - lon1) * Math.PI / 180;
 
-  const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
-    Math.cos(φ1) * Math.cos(φ2) *
-    Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+  const a = Math.sin(Do / 2) * Math.sin(Do / 2) +
+    Math.cos(o1) * Math.cos(o2) *
+    Math.sin(Ds / 2) * Math.sin(Ds / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
   return R * c;
 }
 

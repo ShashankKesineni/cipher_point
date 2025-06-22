@@ -178,5 +178,3 @@ For support, email support@cipherpoint.com or create an issue in this repository
 - CryptoJS for encryption utilities
 
 ---
-
-**Built with ❤️ by Shashank Kesineni**

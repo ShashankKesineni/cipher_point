@@ -13,7 +13,6 @@ import * as AppleAuthentication from 'expo-apple-authentication';
 import Constants from 'expo-constants';
 
 const API_URL = 'https://cipherpoint-production.up.railway.app';
-// TODO: Replace with your real Google OAuth Client ID for Expo Go or standalone app
 const GOOGLE_CLIENT_ID = '427630115371-0plfn5i8a64vrro6mpggvsckerljc9cg.apps.googleusercontent.com';
 
 WebBrowser.maybeCompleteAuthSession();
@@ -35,7 +34,6 @@ export default function App() {
   const [decryptPassword, setDecryptPassword] = useState('');
   const [decryptedMessage, setDecryptedMessage] = useState('');
 
-  // Google Auth Session
   const [request, response, promptAsync] = Google.useAuthRequest({
     expoClientId: GOOGLE_CLIENT_ID,
     iosClientId: GOOGLE_CLIENT_ID,
@@ -130,12 +128,10 @@ export default function App() {
     try {
       const result = await promptAsync();
       if (result.type === 'success' && result.authentication) {
-        // Get user info from Google
         const userInfoResponse = await fetch('https://www.googleapis.com/userinfo/v2/me', {
           headers: { Authorization: `Bearer ${result.authentication.accessToken}` },
         });
         const userInfo = await userInfoResponse.json();
-        // Send to backend
         const response = await fetch(`${API_URL}/google-login`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -172,7 +168,6 @@ export default function App() {
         ],
       });
       
-      // Create user info object from Apple credential
       const userInfo = {
         name: credential.fullName?.givenName && credential.fullName?.familyName 
           ? `${credential.fullName.givenName} ${credential.fullName.familyName}`
@@ -181,7 +176,6 @@ export default function App() {
         appleId: credential.user,
       };
 
-      // Send to backend (using the same endpoint as Google for now)
       const response = await fetch(`${API_URL}/google-login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -204,7 +198,6 @@ export default function App() {
       }
     } catch (error) {
       if (error.code === 'ERR_CANCELED') {
-        // User cancelled the sign-in
         return;
       }
       console.error('Apple sign-in error:', error);
@@ -293,7 +286,6 @@ export default function App() {
     setDecryptedMessage('');
   };
 
-  // Clipboard handlers
   const handleCopyMessageId = async () => {
     if (messageId) {
       await Clipboard.setStringAsync(messageId);
@@ -308,7 +300,6 @@ export default function App() {
 
   const renderLoginPage = () => (
     <View style={styles.loginSignupBg}>
-      {/* Top abstract SVG background */}
       <Svg height="120" width="100%" style={styles.loginSignupSvgTop}>
         <Ellipse cx="60%" cy="60" rx="180" ry="60" fill="#eaf6fb" opacity="0.7" />
         <Ellipse cx="30%" cy="40" rx="90" ry="30" fill="#3498db" opacity="0.12" />
@@ -386,7 +377,6 @@ export default function App() {
           <Text style={styles.loginSignupFooterText}>Powered by CipherPoint • v1.0</Text>
         </View>
       </ScrollView>
-      {/* Bottom abstract SVG background */}
       <Svg height="100" width="100%" style={styles.loginSignupSvgBottom}>
         <Ellipse cx="40%" cy="60" rx="120" ry="40" fill="#27ae60" opacity="0.10" />
         <Ellipse cx="80%" cy="40" rx="60" ry="20" fill="#3498db" opacity="0.10" />
@@ -396,7 +386,6 @@ export default function App() {
 
   const renderSignupPage = () => (
     <View style={styles.loginSignupBg}>
-      {/* Top abstract SVG background */}
       <Svg height="120" width="100%" style={styles.loginSignupSvgTop}>
         <Ellipse cx="60%" cy="60" rx="180" ry="60" fill="#eaf6fb" opacity="0.7" />
         <Ellipse cx="30%" cy="40" rx="90" ry="30" fill="#3498db" opacity="0.12" />
@@ -504,7 +493,6 @@ export default function App() {
           <Text style={styles.loginSignupFooterText}>Powered by CipherPoint • v1.0</Text>
         </View>
       </ScrollView>
-      {/* Bottom abstract SVG background */}
       <Svg height="100" width="100%" style={styles.loginSignupSvgBottom}>
         <Ellipse cx="40%" cy="60" rx="120" ry="40" fill="#27ae60" opacity="0.10" />
         <Ellipse cx="80%" cy="40" rx="60" ry="20" fill="#3498db" opacity="0.10" />
@@ -514,7 +502,6 @@ export default function App() {
 
   const renderEncryptPage = () => (
     <View style={styles.bgContainer}>
-      {/* Top abstract SVG background */}
       <Svg height="120" width="100%" style={styles.svgTop}>
         <Ellipse cx="60%" cy="60" rx="180" ry="60" fill="#eaf6fb" opacity="0.7" />
         <Ellipse cx="30%" cy="40" rx="90" ry="30" fill="#3498db" opacity="0.12" />
@@ -568,7 +555,6 @@ export default function App() {
           ) : null}
         </View>
       </ScrollView>
-      {/* Bottom abstract SVG background */}
       <Svg height="100" width="100%" style={styles.svgBottom}>
         <Ellipse cx="40%" cy="60" rx="120" ry="40" fill="#27ae60" opacity="0.10" />
         <Ellipse cx="80%" cy="40" rx="60" ry="20" fill="#3498db" opacity="0.10" />
@@ -578,7 +564,6 @@ export default function App() {
 
   const renderDecryptPage = () => (
     <View style={styles.bgContainer}>
-      {/* Top abstract SVG background */}
       <Svg height="120" width="100%" style={styles.svgTop}>
         <Ellipse cx="60%" cy="60" rx="180" ry="60" fill="#eaf6fb" opacity="0.7" />
         <Ellipse cx="30%" cy="40" rx="90" ry="30" fill="#3498db" opacity="0.12" />
@@ -631,7 +616,6 @@ export default function App() {
           ) : null}
         </View>
       </ScrollView>
-      {/* Bottom abstract SVG background */}
       <Svg height="100" width="100%" style={styles.svgBottom}>
         <Ellipse cx="40%" cy="60" rx="120" ry="40" fill="#27ae60" opacity="0.10" />
         <Ellipse cx="80%" cy="40" rx="60" ry="20" fill="#3498db" opacity="0.10" />

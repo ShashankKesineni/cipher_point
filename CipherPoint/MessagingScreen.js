@@ -46,7 +46,6 @@ const MessagingScreen = ({ authToken, user, onNavigate }) => {
   const [addressResults, setAddressResults] = useState([]);
   const [isSearchingAddress, setIsSearchingAddress] = useState(false);
 
-  // Info texts for each tab
   const tabInfo = {
     friends: 'View and manage your friends. Start a secure conversation with anyone you trust.',
     search: 'Search for users by name or email. Add them as friends to start messaging securely.',
@@ -206,6 +205,7 @@ const MessagingScreen = ({ authToken, user, onNavigate }) => {
     }
   };
 
+  //method for sending messages to frends
   const sendMessage = async () => {
     if (!newMessage.trim() || !messagePassword.trim() || !location) {
       Alert.alert('Error', 'Please enter message, password, and select a location');
@@ -285,6 +285,7 @@ const MessagingScreen = ({ authToken, user, onNavigate }) => {
     }
   };
 
+  //check decryption information stuff
   const decryptLocationMessage = async (messageId, password) => {
     try {
       const response = await fetch(`${API_URL}/messages/decrypt-location`, {
@@ -306,7 +307,6 @@ const MessagingScreen = ({ authToken, user, onNavigate }) => {
     }
   };
 
-  // Copy location handler
   const handleCopyLocation = async (location) => {
     if (location) {
       const coords = `${location.latitude},${location.longitude}`;
@@ -315,7 +315,6 @@ const MessagingScreen = ({ authToken, user, onNavigate }) => {
     }
   };
 
-  // Get directions handler
   const handleGetDirections = async () => {
     let coords = '';
     try {
@@ -354,6 +353,7 @@ const MessagingScreen = ({ authToken, user, onNavigate }) => {
     );
   };
 
+  //search for friends yayyy
   const renderFriendItem = ({ item }) => (
     <View style={styles.friendItem}>
       <View style={styles.friendInfo}>
@@ -661,7 +661,7 @@ const MessagingScreen = ({ authToken, user, onNavigate }) => {
     }
   };
 
-  // Address search handler
+//adress searches >:)
   const handleAddressSearch = async () => {
     if (!addressQuery.trim()) {
       setAddressResults([]);
@@ -671,7 +671,6 @@ const MessagingScreen = ({ authToken, user, onNavigate }) => {
     try {
       const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(addressQuery.trim())}`);
       const data = await response.json();
-      // Map to expected format: { latitude, longitude, display_name }
       const results = data.map(item => ({
         latitude: parseFloat(item.lat),
         longitude: parseFloat(item.lon),
@@ -765,7 +764,6 @@ const MessagingScreen = ({ authToken, user, onNavigate }) => {
               />
             )}
           </MapView>
-          {/* Address Search Bar and Results BELOW the map */}
           <View style={styles.addressSearchBarContainer}>
             <TextInput
               style={styles.addressSearchInput}
@@ -830,6 +828,7 @@ const MessagingScreen = ({ authToken, user, onNavigate }) => {
   );
 };
 
+//styles  (hate styles)
 const styles = StyleSheet.create({
   messagingContainerClean: {
     flex: 1,

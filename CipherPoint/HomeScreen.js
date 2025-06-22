@@ -15,7 +15,7 @@ const HomeScreen = ({ onNavigate, isLoggedIn, onLogin, onSignup, onLogout, user 
         {/* User Info */}
         {isLoggedIn && user && (
           <View style={styles.userInfo}>
-            <Text style={styles.welcomeText}>Welcome back, {user.name}!</Text>
+            <Text style={styles.welcomeText}>Welcome, {user.name}!</Text>
             <Text style={styles.userEmail}>{user.email}</Text>
           </View>
         )}
@@ -39,6 +39,14 @@ const HomeScreen = ({ onNavigate, isLoggedIn, onLogin, onSignup, onLogout, user 
             >
               <Text style={styles.mainButtonIcon}>🔓</Text>
               <Text style={styles.mainButtonText}>Decrypt Message</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={styles.mainButton} 
+              onPress={() => onNavigate('messaging')}
+            >
+              <Text style={styles.mainButtonIcon}>💬</Text>
+              <Text style={styles.mainButtonText}>Messaging</Text>
             </TouchableOpacity>
           </>
         ) : (

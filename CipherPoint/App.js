@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { StyleSheet, Text, View, TextInput, Button, Alert, ScrollView, TouchableOpacity } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import HomeScreen from './HomeScreen';
+import MessagingScreen from './MessagingScreen';
 
-const API_URL = 'http://192.168.86.28:3001';
+const API_URL = 'http://localhost:3001';
 
 export default function App() {
   const [currentPage, setCurrentPage] = useState('home');
@@ -242,6 +243,10 @@ export default function App() {
           onChangeText={(text) => setLoginData({...loginData, email: text})}
           keyboardType="email-address"
           autoCapitalize="none"
+          autoComplete="email"
+          autoCorrect={false}
+          textContentType="emailAddress"
+          accessibilityLabel="Login email"
         />
         <TextInput
           style={styles.input}
@@ -249,6 +254,11 @@ export default function App() {
           value={loginData.password}
           onChangeText={(text) => setLoginData({...loginData, password: text})}
           secureTextEntry
+          autoComplete="off"
+          autoCorrect={false}
+          autoCapitalize="none"
+          textContentType="password"
+          accessibilityLabel="Login password"
         />
         <TouchableOpacity style={styles.primaryButton} onPress={handleLogin}>
           <Text style={styles.primaryButtonText}>Log In</Text>
@@ -280,6 +290,10 @@ export default function App() {
           placeholder="Full Name"
           value={signupData.name}
           onChangeText={(text) => setSignupData({...signupData, name: text})}
+          autoComplete="name"
+          autoCorrect={false}
+          textContentType="name"
+          accessibilityLabel="Full name"
         />
         <TextInput
           style={styles.input}
@@ -288,6 +302,10 @@ export default function App() {
           onChangeText={(text) => setSignupData({...signupData, email: text})}
           keyboardType="email-address"
           autoCapitalize="none"
+          autoComplete="email"
+          autoCorrect={false}
+          textContentType="emailAddress"
+          accessibilityLabel="Signup email"
         />
         <TextInput
           style={styles.input}
@@ -295,6 +313,11 @@ export default function App() {
           value={signupData.password}
           onChangeText={(text) => setSignupData({...signupData, password: text})}
           secureTextEntry
+          autoComplete="off"
+          autoCorrect={false}
+          autoCapitalize="none"
+          textContentType="newPassword"
+          accessibilityLabel="Signup password"
         />
         <TextInput
           style={styles.input}
@@ -302,6 +325,11 @@ export default function App() {
           value={signupData.confirmPassword}
           onChangeText={(text) => setSignupData({...signupData, confirmPassword: text})}
           secureTextEntry
+          autoComplete="off"
+          autoCorrect={false}
+          autoCapitalize="none"
+          textContentType="newPassword"
+          accessibilityLabel="Confirm signup password"
         />
         <TouchableOpacity style={styles.primaryButton} onPress={handleSignup}>
           <Text style={styles.primaryButtonText}>Create Account</Text>
@@ -342,6 +370,11 @@ export default function App() {
           value={password}
           onChangeText={setPassword}
           secureTextEntry
+          autoComplete="off"
+          autoCorrect={false}
+          autoCapitalize="none"
+          textContentType="none"
+          accessibilityLabel="Message encryption password"
         />
         <TouchableOpacity style={styles.primaryButton} onPress={handleEncrypt}>
           <Text style={styles.primaryButtonText}>Encrypt Message</Text>
@@ -391,6 +424,11 @@ export default function App() {
           value={decryptPassword}
           onChangeText={setDecryptPassword}
           secureTextEntry
+          autoComplete="off"
+          autoCorrect={false}
+          autoCapitalize="none"
+          textContentType="none"
+          accessibilityLabel="Message decryption password"
         />
         <TouchableOpacity style={styles.primaryButton} onPress={handleDecrypt}>
           <Text style={styles.primaryButtonText}>Decrypt Message</Text>
@@ -422,6 +460,13 @@ export default function App() {
       {currentPage === 'signup' && renderSignupPage()}
       {currentPage === 'encrypt' && renderEncryptPage()}
       {currentPage === 'decrypt' && renderDecryptPage()}
+      {currentPage === 'messaging' && (
+        <MessagingScreen 
+          authToken={authToken}
+          user={user}
+          onNavigate={setCurrentPage}
+        />
+      )}
     </View>
   );
 }

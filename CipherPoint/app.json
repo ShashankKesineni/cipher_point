@@ -40,7 +40,7 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-clipboard"
+      
     ],
     "extra": {
       "eas": {

@@ -11,11 +11,10 @@ import {
   Modal,
   Dimensions
 } from 'react-native';
-import * as Clipboard from 'expo-clipboard';
 import * as Location from 'expo-location';
 import MapView, { Marker, Circle } from 'react-native-maps';
 
-const API_URL = 'http://localhost:3001';
+const API_URL = 'https://cipherpoint-production.up.railway.app';
 const { width, height } = Dimensions.get('window');
 
 const MessagingScreen = ({ authToken, user, onNavigate }) => {

@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { StyleSheet, Text, View, TextInput, Button, Alert, ScrollView, TouchableOpacity } from 'react-native';
-import * as Clipboard from 'expo-clipboard';
 import HomeScreen from './HomeScreen';
 import MessagingScreen from './MessagingScreen';
 
-const API_URL = 'http://localhost:3001';
+const API_URL = 'https://cipherpoint-production.up.railway.app';
 
 export default function App() {
   const [currentPage, setCurrentPage] = useState('home');
@@ -385,15 +384,6 @@ export default function App() {
             <Text style={styles.resultTitle}>Message Encrypted Successfully!</Text>
             <View style={styles.idContainer}>
               <Text style={styles.resultText}>Message ID: {messageId}</Text>
-              <TouchableOpacity 
-                style={styles.copyButton} 
-                onPress={async () => {
-                  await Clipboard.setStringAsync(messageId);
-                  Alert.alert('Copied!', 'Message ID copied to clipboard');
-                }}
-              >
-                <Text style={styles.copyButtonText}>📋 Copy</Text>
-              </TouchableOpacity>
             </View>
             <Text style={styles.resultNote}>Share this ID with the recipient</Text>
           </View>

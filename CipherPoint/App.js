@@ -43,7 +43,6 @@ export default function App() {
     scopes: ['profile', 'email'],
     redirectUri: makeRedirectUri({ useProxy: true }),
   });
-
   useEffect(() => {
     if (authToken) {
       setIsLoggedIn(true);
@@ -74,9 +73,7 @@ export default function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, email, password }),
       });
-      
       const data = await response.json();
-      
       if (response.ok) {
         setAuthToken(data.token);
         setUser(data.user);
@@ -106,7 +103,6 @@ export default function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
       });
-      
       const data = await response.json();
       
       if (response.ok) {
@@ -158,7 +154,6 @@ export default function App() {
       Alert.alert('Error', 'Google sign-in failed. Please try again.');
     }
   };
-
   const handleAppleSignIn = async () => {
     try {
       const credential = await AppleAuthentication.signInAsync({

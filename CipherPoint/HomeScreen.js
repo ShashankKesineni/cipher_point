@@ -1,3 +1,4 @@
+//homescreen frontend
 import React from 'react';
 import { StyleSheet, Text, View, TouchableOpacity, ScrollView } from 'react-native';
 import { Svg, Ellipse } from 'react-native-svg';
@@ -5,12 +6,10 @@ import { Svg, Ellipse } from 'react-native-svg';
 const HomeScreen = ({ onNavigate, isLoggedIn, onLogin, onSignup, onLogout, user }) => {
   return (
     <View style={styles.bgContainer}>
-      {/* Top abstract SVG background (always behind content) */}
       <Svg height="120" width="100%" style={[styles.svgTop, { zIndex: 0 }] } pointerEvents="none">
         <Ellipse cx="60%" cy="60" rx="180" ry="60" fill="#eaf6fb" opacity="0.7" />
         <Ellipse cx="30%" cy="40" rx="90" ry="30" fill="#3498db" opacity="0.12" />
       </Svg>
-      {/* Log Out button (top right) */}
       {isLoggedIn && (
         <TouchableOpacity style={styles.logoutButton} onPress={onLogout} activeOpacity={0.85}>
           <Text style={styles.logoutButtonText}>Log Out</Text>
@@ -83,7 +82,6 @@ const HomeScreen = ({ onNavigate, isLoggedIn, onLogin, onSignup, onLogout, user 
           <View style={styles.footerClean}>
             <Text style={styles.footerTextClean}>Powered by CipherPoint • v1.0</Text>
           </View>
-          {/* Login/Signup Section */}
           {!isLoggedIn && (
             <View style={styles.authSectionClean}>
               <TouchableOpacity style={styles.authButtonClean} onPress={onLogin} activeOpacity={0.85}>
@@ -96,7 +94,6 @@ const HomeScreen = ({ onNavigate, isLoggedIn, onLogin, onSignup, onLogout, user 
           )}
         </View>
       </ScrollView>
-      {/* Bottom abstract SVG background (always behind content) */}
       <Svg height="100" width="100%" style={[styles.svgBottom, { zIndex: 0 }]} pointerEvents="none">
         <Ellipse cx="40%" cy="60" rx="120" ry="40" fill="#27ae60" opacity="0.10" />
         <Ellipse cx="80%" cy="40" rx="60" ry="20" fill="#3498db" opacity="0.10" />
